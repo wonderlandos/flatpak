@@ -198,6 +198,8 @@ typedef enum {
   FLATPAK_CP_FLAGS_MOVE = 1 << 2,
 } FlatpakCpFlags;
 
+gboolean   flatpak_try_reflink (GFile *src,
+                                GFile *dest);
 gboolean   flatpak_cp_a (GFile         *src,
                          GFile         *dest,
                          FlatpakCpFlags flags,

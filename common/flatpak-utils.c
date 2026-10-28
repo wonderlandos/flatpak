@@ -38,6 +38,7 @@
 #include <sys/utsname.h>
 #include <sys/ioctl.h>
 #include <termios.h>
+#include <linux/fs.h>
 
 #include <glib.h>
 #include <gio/gunixoutputstream.h>
@@ -1173,6 +1174,38 @@ flatpak_openat_noatime (int           dfd,
     }
 }
 
+/* Try to clone @src into @dest with FICLONE (btrfs, XFS, bcachefs).
+ * Shares extents instead of duplicating data. Returns FALSE with errno-free
+ * semantics when the filesystem cannot reflink, so callers fall back. */
+gboolean
+flatpak_try_reflink (GFile *src,
+                     GFile *dest)
+{
+  glnx_autofd int src_fd = -1;
+  glnx_autofd int dest_fd = -1;
+  struct stat st;
+  const char *dest_path = flatpak_file_get_path_cached (dest);
+
+  if (g_getenv ("FLATPAK_NO_REFLINK") != NULL)
+    return FALSE;
+
+  src_fd = open (flatpak_file_get_path_cached (src), O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+  if (src_fd < 0 || fstat (src_fd, &st) != 0 || !S_ISREG (st.st_mode))
+    return FALSE;
+
+  dest_fd = open (dest_path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, st.st_mode & 07777);
+  if (dest_fd < 0)
+    return FALSE;
+
+  if (ioctl (dest_fd, FICLONE, src_fd) != 0)
+    {
+      (void) unlink (dest_path);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 gboolean
 flatpak_cp_a (GFile         *src,
               GFile         *dest,
@@ -1272,8 +1305,16 @@ flatpak_cp_a (GFile         *src,
             }
           else
             {
-              if (!g_file_copy (src_child, dest_child, copyflags,
-                                cancellable, NULL, NULL, error))
+              if (g_file_info_get_file_type (child_info) == G_FILE_TYPE_REGULAR &&
+                  flatpak_try_reflink (src_child, dest_child))
+                {
+                  if ((copyflags & G_FILE_COPY_ALL_METADATA) &&
+                      !g_file_copy_attributes (src_child, dest_child, copyflags,
+                                               cancellable, error))
+                    goto out;
+                }
+              else if (!g_file_copy (src_child, dest_child, copyflags,
+                                     cancellable, NULL, NULL, error))
                 goto out;
             }
         }
