@@ -47,6 +47,7 @@ static gboolean opt_app;
 static gboolean opt_all;
 static gboolean opt_yes;
 static gboolean opt_unused;
+static gboolean opt_keep_unused;
 static gboolean opt_delete_data;
 static gboolean opt_noninteractive;
 
@@ -59,6 +60,7 @@ static GOptionEntry options[] = {
   { "app", 0, 0, G_OPTION_ARG_NONE, &opt_app, N_("Look for app with the specified name"), NULL },
   { "all", 0, 0, G_OPTION_ARG_NONE, &opt_all, N_("Uninstall all"), NULL },
   { "unused", 0, 0, G_OPTION_ARG_NONE, &opt_unused, N_("Uninstall unused"), NULL },
+  { "keep-unused", 0, 0, G_OPTION_ARG_NONE, &opt_keep_unused, N_("Don't remove runtimes left unused afterwards"), NULL },
   { "delete-data", 0, 0, G_OPTION_ARG_NONE, &opt_delete_data, N_("Delete app data"), NULL },
   { "assumeyes", 'y', 0, G_OPTION_ARG_NONE, &opt_yes, N_("Automatically answer yes for all questions"), NULL },
   { "noninteractive", 0, 0, G_OPTION_ARG_NONE, &opt_noninteractive, N_("Produce minimal output and don't ask questions"), NULL },
@@ -542,6 +544,11 @@ flatpak_builtin_uninstall (int argc, char **argv, GCancellable *cancellable, GEr
 
         return FALSE;
       }
+
+    if (!opt_unused &&
+        !flatpak_cli_prune_unused_refs (udir->dir, opt_arch, opt_keep_unused || opt_keep_ref,
+                                        cancellable, error))
+      return FALSE;
 
     if (opt_delete_data)
       {

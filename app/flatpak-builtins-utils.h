@@ -209,4 +209,10 @@ gboolean ensure_remote_state_all_arches (FlatpakDir         *dir,
                                          GCancellable       *cancellable,
                                          GError            **error);
 
+gboolean flatpak_cli_prune_unused_refs (FlatpakDir   *dir,
+                                        const char   *arch,
+                                        gboolean      keep_unused,
+                                        GCancellable *cancellable,
+                                        GError      **error);
+
 #endif /* __FLATPAK_BUILTINS_UTILS_H__ */

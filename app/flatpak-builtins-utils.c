@@ -28,6 +28,8 @@
 
 #include "flatpak-ref.h"
 #include "flatpak-builtins-utils.h"
+#include "flatpak-transaction.h"
+#include "flatpak-installation-private.h"
 #include "flatpak-tty-utils-private.h"
 #include "flatpak-utils-private.h"
 #include "flatpak-run-private.h"
@@ -1449,4 +1451,53 @@ ensure_remote_state_all_arches (FlatpakDir         *dir,
     return FALSE;
 
   return TRUE;
+}
+
+/* Remove runtimes and extensions nothing uses any more, so uninstall and
+ * update free their disk space without a separate `uninstall --unused`.
+ * Opt out with --keep-unused or FLATPAK_KEEP_UNUSED=1. Pinned refs stay. */
+gboolean
+flatpak_cli_prune_unused_refs (FlatpakDir   *dir,
+                               const char   *arch,
+                               gboolean      keep_unused,
+                               GCancellable *cancellable,
+                               GError      **error)
+{
+  g_autoptr(FlatpakInstallation) installation = NULL;
+  g_autoptr(FlatpakTransaction) transaction = NULL;
+  g_auto(GStrv) unused = NULL;
+  const char *env = g_getenv ("FLATPAK_KEEP_UNUSED");
+  gboolean added = FALSE;
+
+  if (keep_unused || (env != NULL && *env != '\0' && g_strcmp0 (env, "0") != 0))
+    return TRUE;
+
+  unused = flatpak_dir_list_unused_refs (dir, arch, NULL, NULL, NULL,
+                                         FLATPAK_DIR_FILTER_NONE, cancellable, error);
+  if (unused == NULL)
+    return FALSE;
+  if (unused[0] == NULL)
+    return TRUE;
+
+  installation = flatpak_installation_new_for_dir (dir, cancellable, error);
+  if (installation == NULL)
+    return FALSE;
+  transaction = flatpak_transaction_new_for_installation (installation, cancellable, error);
+  if (transaction == NULL)
+    return FALSE;
+  flatpak_transaction_set_no_pull (transaction, TRUE);
+  flatpak_transaction_set_disable_related (transaction, TRUE);
+
+  for (char **iter = unused; *iter; iter++)
+    {
+      if (!flatpak_transaction_add_uninstall (transaction, *iter, error))
+        return FALSE;
+      added = TRUE;
+    }
+
+  if (!added)
+    return TRUE;
+
+  g_print (_("Removing %u unused runtime(s)\n"), g_strv_length (unused));
+  return flatpak_transaction_run (transaction, cancellable, error);
 }

@@ -51,6 +51,7 @@ static gboolean opt_app;
 static gboolean opt_appstream;
 static gboolean opt_yes;
 static gboolean opt_noninteractive;
+static gboolean opt_keep_unused;
 
 static GOptionEntry options[] = {
   { "arch", 0, 0, G_OPTION_ARG_STRING, &opt_arch, N_("Arch to update for"), N_("ARCH") },
@@ -61,6 +62,7 @@ static GOptionEntry options[] = {
   { "no-related", 0, 0, G_OPTION_ARG_NONE, &opt_no_related, N_("Don't update related refs"), NULL},
   { "no-deps", 0, 0, G_OPTION_ARG_NONE, &opt_no_deps, N_("Don't verify/install runtime dependencies"), NULL },
   { "no-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_no_static_deltas, N_("Don't use static deltas"), NULL },
+  { "keep-unused", 0, 0, G_OPTION_ARG_NONE, &opt_keep_unused, N_("Don't remove runtimes left unused afterwards"), NULL },
   { "runtime", 0, 0, G_OPTION_ARG_NONE, &opt_runtime, N_("Look for runtime with the specified name"), NULL },
   { "app", 0, 0, G_OPTION_ARG_NONE, &opt_app, N_("Look for app with the specified name"), NULL },
   { "appstream", 0, 0, G_OPTION_ARG_NONE, &opt_appstream, N_("Update appstream for remote"), NULL },
@@ -266,6 +268,11 @@ flatpak_builtin_update (int           argc,
 
       if (!flatpak_transaction_is_empty (transaction))
         has_updates = TRUE;
+
+      if (!opt_no_deploy &&
+          !flatpak_cli_prune_unused_refs (g_ptr_array_index (dirs, k),
+                                          opt_arch, opt_keep_unused, cancellable, error))
+        return FALSE;
     }
 
   if (!has_updates)

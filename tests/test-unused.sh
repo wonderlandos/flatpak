@@ -27,7 +27,7 @@ export USE_SYSTEMDIR=yes
 skip_without_bwrap
 skip_revokefs_without_fuse
 
-echo "1..3"
+echo "1..4"
 
 setup_empty_repo &> /dev/null > /dev/null
 
@@ -432,3 +432,17 @@ if [ $(cat newly-unused.txt | wc -l) -ne 10 ]; then
 fi
 
 ok "list unused exclude"
+
+# Uninstalling an app removes what only it used, unless asked to keep it
+FLATPAK_KEEP_UNUSED= $FLATPAK uninstall -y --system org.app.APP_A//stable > prune-log
+assert_file_has_content prune-log "unused runtime"
+$FLATPAK list --system -a --columns=ref | sort > after-prune.txt
+assert_not_file_has_content after-prune.txt "org.runtime.USED_A/"
+assert_not_file_has_content after-prune.txt "org.extension.APP_A.Locale/"
+for ref in $(cat old-unused.txt); do
+    assert_not_file_has_content after-prune.txt "^runtime/$ref\$"
+done
+${test_builddir}/list-unused > still-unused.txt
+assert_file_empty still-unused.txt
+
+ok "uninstall prunes unused"

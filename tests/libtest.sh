@@ -107,6 +107,8 @@ export FLATPAK_SYSTEM_HELPER_ON_SESSION=1
 export FLATPAK_CONFIG_DIR=${TEST_DATA_DIR}/config
 export FLATPAK_RUN_DIR=${TEST_DATA_DIR}/run
 export FLATPAK_FANCY_OUTPUT=0
+# Tests assume unused runtimes stay until asked; test-unused.sh covers pruning.
+export FLATPAK_KEEP_UNUSED=1
 export FLATPAK_FORCE_ALLOW_FUZZY_MATCHING=1
 
 export HOME=${TEST_DATA_DIR}/home
