@@ -50,6 +50,7 @@ static gboolean opt_no_deploy;
 static gboolean opt_no_related;
 static gboolean opt_no_deps;
 static gboolean opt_no_static_deltas;
+static char *opt_wolos_consent;
 static gboolean opt_runtime;
 static gboolean opt_app;
 static gboolean opt_include_sdk;
@@ -70,6 +71,7 @@ static GOptionEntry options[] = {
   { "no-deps", 0, 0, G_OPTION_ARG_NONE, &opt_no_deps, N_("Don't verify/install runtime dependencies"), NULL },
   { "no-auto-pin", 0, 0, G_OPTION_ARG_NONE, &opt_no_auto_pin, N_("Don't automatically pin explicit installs"), NULL },
   { "no-static-deltas", 0, 0, G_OPTION_ARG_NONE, &opt_no_static_deltas, N_("Don't use static deltas"), NULL },
+  { "wolos-consent", 0, 0, G_OPTION_ARG_FILENAME, &opt_wolos_consent, N_("Ask HELPER to approve the requested permissions"), N_("HELPER") },
   { "runtime", 0, 0, G_OPTION_ARG_NONE, &opt_runtime, N_("Look for runtime with the specified name"), NULL },
   { "app", 0, 0, G_OPTION_ARG_NONE, &opt_app, N_("Look for app with the specified name"), NULL },
   { "include-sdk", 0, 0, G_OPTION_ARG_NONE, &opt_include_sdk, N_("Additionally install the SDK used to build the given refs") },
@@ -300,6 +302,9 @@ flatpak_builtin_install (int argc, char **argv, GCancellable *cancellable, GErro
                                      FLATPAK_BUILTIN_FLAG_ALL_DIRS | FLATPAK_BUILTIN_FLAG_OPTIONAL_REPO,
                                      &dirs, cancellable, error))
     return FALSE;
+
+  if (opt_wolos_consent)
+    g_setenv ("FLATPAK_WOLOS_CONSENT_HELPER", opt_wolos_consent, TRUE);
 
   /* Start with the default or specified dir, this is fine for opt_bundle or opt_from */
   dir = g_object_ref (g_ptr_array_index (dirs, 0));

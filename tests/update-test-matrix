@@ -26,6 +26,7 @@ TEST_MATRIX_SOURCE=(
 	'tests/test-oci-registry.sh{{user+system},{http+https}}' \
 	'tests/test-update-remote-configuration.sh{newsummary+oldsummary}' \
 	'tests/test-override.sh' \
+	'tests/test-wolos-consent.sh' \
 	'tests/test-update-portal.sh{user+system}' \
 	'tests/test-auth.sh' \
 	'tests/test-unused.sh' \

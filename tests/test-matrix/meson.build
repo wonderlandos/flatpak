@@ -42,6 +42,7 @@ wrapped_tests += {'name' : 'test-metadata-validation.sh', 'script' : 'test-metad
 wrapped_tests += {'name' : 'test-extensions.sh', 'script' : 'test-extensions.sh'}
 wrapped_tests += {'name' : 'test-oci.sh', 'script' : 'test-oci.sh'}
 wrapped_tests += {'name' : 'test-override.sh', 'script' : 'test-override.sh'}
+wrapped_tests += {'name' : 'test-wolos-consent.sh', 'script' : 'test-wolos-consent.sh'}
 wrapped_tests += {'name' : 'test-auth.sh', 'script' : 'test-auth.sh'}
 wrapped_tests += {'name' : 'test-unused.sh', 'script' : 'test-unused.sh'}
 wrapped_tests += {'name' : 'test-prune.sh', 'script' : 'test-prune.sh'}

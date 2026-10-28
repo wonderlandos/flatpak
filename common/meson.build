@@ -215,6 +215,7 @@ sources = [
   'flatpak-transaction.c',
   'flatpak-utils-http.c',
   'flatpak-utils.c',
+  'flatpak-wolos-consent.c',
   'flatpak-uri.c',
   'flatpak-usb.c',
   'flatpak-xml-utils.c',

@@ -34,6 +34,7 @@
 #include "flatpak-builtins.h"
 #include "flatpak-utils-private.h"
 #include "flatpak-run-private.h"
+#include "flatpak-wolos-consent-private.h"
 
 static gboolean opt_reset;
 static gboolean opt_show;
@@ -43,6 +44,24 @@ static GOptionEntry options[] = {
   { "show", 0, 0, G_OPTION_ARG_NONE, &opt_show, N_("Show existing overrides"), NULL },
   { NULL }
 };
+
+/* Keep the recorded grants in step with the overrides just written. */
+static gboolean
+sync_consent (FlatpakDir *dir,
+              const char *app,
+              GError    **error)
+{
+  g_autoptr(FlatpakDecomposed) ref = NULL;
+
+  if (app == NULL || !flatpak_wolos_consent_enabled ())
+    return TRUE;
+
+  ref = flatpak_dir_current_ref (dir, app, NULL);
+  if (ref == NULL)
+    return TRUE;
+
+  return flatpak_wolos_consent_sync (dir, ref, error);
+}
 
 gboolean
 flatpak_builtin_override (int argc, char **argv, GCancellable *cancellable, GError **error)
@@ -82,7 +101,11 @@ flatpak_builtin_override (int argc, char **argv, GCancellable *cancellable, GErr
     app = NULL;
 
   if (opt_reset)
-    return flatpak_remove_override_keyfile (app, flatpak_dir_is_user (dir), &my_error);
+    {
+      if (!flatpak_remove_override_keyfile (app, flatpak_dir_is_user (dir), &my_error))
+        return FALSE;
+      return sync_consent (dir, app, error);
+    }
 
   metakey = flatpak_load_override_keyfile (app, flatpak_dir_is_user (dir), &my_error);
   if (metakey == NULL)
@@ -118,7 +141,7 @@ flatpak_builtin_override (int argc, char **argv, GCancellable *cancellable, GErr
   if (!flatpak_save_override_keyfile (metakey, app, flatpak_dir_is_user (dir), error))
     return FALSE;
 
-  return TRUE;
+  return sync_consent (dir, app, error);
 }
 
 gboolean

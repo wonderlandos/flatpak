@@ -34,6 +34,7 @@
 #include "flatpak-utils-private.h"
 #include "flatpak-uri-private.h"
 #include "flatpak-variant-impl-private.h"
+#include "flatpak-wolos-consent-private.h"
 
 /**
  * SECTION:flatpak-transaction
@@ -5240,6 +5241,21 @@ flatpak_transaction_real_run (FlatpakTransaction *self,
   if (!ready_res)
     return flatpak_fail_error (error, FLATPAK_ERROR_ABORTED, _("Aborted by user"));
 
+  /* Let the configured consent helper see (and refuse) the static
+   * permissions of every app this transaction installs or widens. */
+  for (l = priv->ops; l != NULL; l = l->next)
+    {
+      FlatpakTransactionOperation *op = l->data;
+
+      if (op->skip || op->kind == FLATPAK_TRANSACTION_OPERATION_UNINSTALL)
+        continue;
+
+      if (!flatpak_wolos_consent_check (priv->dir, op->ref, op->resolved_metakey,
+                                        op->kind == FLATPAK_TRANSACTION_OPERATION_UPDATE ? op->resolved_old_metakey : NULL,
+                                        error))
+        return FALSE;
+    }
+
   for (l = priv->ops; l != NULL; l = l->next)
     {
       FlatpakTransactionOperation *op = l->data;
@@ -5277,6 +5293,15 @@ flatpak_transaction_real_run (FlatpakTransaction *self,
                                 &needs_prune, &needs_triggers, &needs_cache_drop,
                                 cancellable, &local_error))
         res = FALSE;
+
+      if (res)
+        {
+          g_autoptr(GError) consent_error = NULL;
+
+          if (!flatpak_wolos_consent_sync (priv->dir, op->ref, &consent_error))
+            g_warning ("Could not record permissions of %s: %s",
+                       flatpak_decomposed_get_pref (op->ref), consent_error->message);
+        }
 
       if (res)
         {
